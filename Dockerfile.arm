@@ -1,0 +1,12 @@
+FROM plugins/base:arm
+
+LABEL maintainer="Drone.IO Community <drone-dev@googlegroups.com>" \
+  org.label-schema.name="Drone Ansible" \
+  org.label-schema.vendor="Drone.IO Community" \
+  org.label-schema.schema-version="1.0"
+
+RUN apk add --no-cache bash git curl ansible py-pip && \
+  pip install -U pip
+
+ADD release/linux/arm/drone-ansible /bin/
+ENTRYPOINT ["/bin/drone-ansible"]
