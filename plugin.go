@@ -187,7 +187,7 @@ func (p *Plugin) requirementsCommand() *exec.Cmd {
 	}
 
 	return exec.Command(
-		"pip3",
+		"pip",
 		args...,
 	)
 }
