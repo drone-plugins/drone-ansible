@@ -5,7 +5,7 @@ LABEL maintainer="Drone.IO Community <drone-dev@googlegroups.com>" \
   org.label-schema.vendor="Drone.IO Community" \
   org.label-schema.schema-version="1.0"
 
-RUN apk add --no-cache bash git curl ansible py-pip && \
+RUN apk add --no-cache bash git curl rysnc ansible py-pip && \
   pip install -U pip
 
 ADD release/linux/i386/drone-ansible /bin/
