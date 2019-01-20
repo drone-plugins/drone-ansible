@@ -1,4 +1,4 @@
-FROM plugins/base:arm64
+FROM plugins/base:linux-arm
 
 LABEL maintainer="Drone.IO Community <drone-dev@googlegroups.com>" \
   org.label-schema.name="Drone Ansible" \
@@ -8,5 +8,5 @@ LABEL maintainer="Drone.IO Community <drone-dev@googlegroups.com>" \
 RUN apk add --no-cache bash git curl rsync openssh-client ansible py-pip && \
   pip install -U pip
 
-ADD release/linux/arm64/drone-ansible /bin/
+ADD release/linux/arm/drone-ansible /bin/
 ENTRYPOINT ["/bin/drone-ansible"]
