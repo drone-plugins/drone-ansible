@@ -7,7 +7,6 @@
 [![](https://images.microbadger.com/badges/image/plugins/ansible.svg)](https://microbadger.com/images/plugins/ansible "Get your own image badge on microbadger.com")
 [![Go Doc](https://godoc.org/github.com/drone-plugins/drone-ansible?status.svg)](http://godoc.org/github.com/drone-plugins/drone-ansible)
 [![Go Report](https://goreportcard.com/badge/github.com/drone-plugins/drone-ansible)](https://goreportcard.com/report/github.com/drone-plugins/drone-ansible)
-[![](https://images.microbadger.com/badges/image/plugins/ansible.svg)](https://microbadger.com/images/plugins/ansible "Get your own image badge on microbadger.com")
 
 Drone plugin to provision infrastructure with [Ansible](https://www.ansible.com/). For the usage information and a listing of the available options please take a look at [the docs](http://plugins.drone.io/drone-plugins/drone-ansible/).
 
