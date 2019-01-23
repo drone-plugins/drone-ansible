@@ -70,4 +70,6 @@ branches:
       enforce_admins: false
       restrictions:
         users: []
-        teams: []
+        teams:
+          - Admins
+          - Captain
