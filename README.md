@@ -15,7 +15,13 @@ Drone plugin to provision infrastructure with [Ansible](https://www.ansible.com/
 Build the binary with the following commands:
 
 ```
-go build
+export GOOS=linux
+export GOARCH=amd64
+export CGO_ENABLED=0
+export GO111MODULE=on
+
+go test -cover ./...
+go build -v -a -tags netgo -o release/linux/amd64/drone-ansible
 ```
 
 ## Docker
@@ -23,8 +29,10 @@ go build
 Build the Docker image with the following commands:
 
 ```
-GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -tags netgo -o release/linux/amd64/drone-ansible
-docker build --rm -t plugins/ansible .
+docker build \
+  --label org.label-schema.build-date=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+  --label org.label-schema.vcs-ref=$(git rev-parse --short HEAD) \
+  --file docker/Dockerfile.linux.amd64 --tag plugins/ansible .
 ```
 
 ### Usage
