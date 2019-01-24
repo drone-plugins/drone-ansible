@@ -14,6 +14,9 @@ steps:
   - go vet ./...
   environment:
     GO111MODULE: on
+  volumes:
+  - name: gopath
+    path: /go
 
 - name: test
   pull: always
@@ -22,10 +25,13 @@ steps:
   - go test -cover ./...
   environment:
     GO111MODULE: on
+  volumes:
+  - name: gopath
+    path: /go
 
-trigger:
-  branch:
-  - master
+volumes:
+- name: gopath
+  temp:
 
 ---
 kind: pipeline
@@ -44,6 +50,9 @@ steps:
   environment:
     CGO_ENABLED: 0
     GO111MODULE: on
+  volumes:
+  - name: gopath
+    path: /go
   when:
     event:
     - push
@@ -57,6 +66,9 @@ steps:
   environment:
     CGO_ENABLED: 0
     GO111MODULE: on
+  volumes:
+  - name: gopath
+    path: /go
   when:
     event:
     - tag
@@ -100,6 +112,10 @@ steps:
     - push
     - tag
 
+volumes:
+- name: gopath
+  temp:
+
 trigger:
   branch:
   - master
@@ -124,6 +140,9 @@ steps:
   environment:
     CGO_ENABLED: 0
     GO111MODULE: on
+  volumes:
+  - name: gopath
+    path: /go
   when:
     event:
     - push
@@ -137,6 +156,9 @@ steps:
   environment:
     CGO_ENABLED: 0
     GO111MODULE: on
+  volumes:
+  - name: gopath
+    path: /go
   when:
     event:
     - tag
@@ -180,6 +202,10 @@ steps:
     - push
     - tag
 
+volumes:
+- name: gopath
+  temp:
+
 trigger:
   branch:
   - master
@@ -204,6 +230,9 @@ steps:
   environment:
     CGO_ENABLED: 0
     GO111MODULE: on
+  volumes:
+  - name: gopath
+    path: /go
   when:
     event:
     - push
@@ -217,6 +246,9 @@ steps:
   environment:
     CGO_ENABLED: 0
     GO111MODULE: on
+  volumes:
+  - name: gopath
+    path: /go
   when:
     event:
     - tag
@@ -260,6 +292,10 @@ steps:
     - push
     - tag
 
+volumes:
+- name: gopath
+  temp:
+
 trigger:
   branch:
   - master
@@ -280,6 +316,7 @@ steps:
   pull: always
   image: plugins/manifest:1
   settings:
+    auto_tag: true
     ignore_missing: true
     password:
       from_secret: docker_password
@@ -295,8 +332,6 @@ steps:
       from_secret: microbadger_url
 
 trigger:
-  branch:
-  - master
   event:
   - push
   - tag
