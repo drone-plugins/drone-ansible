@@ -37,11 +37,10 @@ docker build \
 ## Usage
 
 ```console
-docker run --rm \
-  -e PLUGIN_PRIVATE_KEY="$(cat ~/.ssh/id_rsa)" \
-  -e PLUGIN_PLAYBOOK="deployment/playbook.yml" \
-  -e PLUGIN_INVENTORY="deployment/hosts.yml" \
-  -v $(pwd):$(pwd) \
-  -w $(pwd) \
-  plugins/ansible
+$ docker run --rm \
+-e PLUGIN_PLAYBOOK="/playbook.yml" \
+-e PLUGIN_INVENTORY="/hosts" \
+-v $(pwd):$(pwd) \
+-w $(pwd) \
+dclocal/drone-ansible:1.0.0
 ```
