@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -64,6 +65,10 @@ type (
 )
 
 func (p *Plugin) Exec() error {
+	if err := p.playbooks(); err != nil {
+		return err
+	}
+
 	if err := p.ansibleConfig(); err != nil {
 		return err
 	}
@@ -164,6 +169,25 @@ func (p *Plugin) vaultPass() error {
 	}
 
 	p.Config.VaultPasswordFile = tmpfile.Name()
+	return nil
+}
+
+func (p *Plugin) playbooks() error {
+	var playbooks []string
+	for _, p := range p.Config.Playbooks {
+		files, err := filepath.Glob(p)
+		// can there be a invalid glob pattern that still is a valid file name?
+		// just add it back to the list and let ansible return error out instead.
+		if err != nil {
+			playbooks = append(playbooks, p)
+			continue
+		}
+		playbooks = append(playbooks, files...)
+	}
+	if len(playbooks) == 0 {
+		return errors.New("failed to find playbook files")
+	}
+	p.Config.Playbooks = playbooks
 	return nil
 }
 
