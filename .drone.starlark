@@ -5,8 +5,6 @@ def main(ctx):
     linux('amd64'),
     linux('arm64'),
     linux('arm'),
-    windows('1903'),
-    windows('1809'),
   ]
 
   after = manifest() + gitter()
@@ -180,116 +178,6 @@ def linux(arch):
         'refs/heads/master',
         'refs/tags/**',
         'refs/pull/**'
-      ]
-    }
-  }
-
-def windows(version):
-  return {
-    'kind': 'pipeline',
-    'type': 'ssh',
-    'name': 'windows-%s' % version,
-    'platform': {
-      'os': 'windows'
-    },
-    'server': {
-      'host': {
-        'from_secret': 'windows_server_%s' % version
-      },
-      'user': {
-        'from_secret': 'windows_username'
-      },
-      'password': {
-        'from_secret': 'windows_password'
-      },
-    },
-    'steps': [
-      {
-        'name': 'build-push',
-        'environment': {
-          'CGO_ENABLED': '0'
-        },
-        'commands': [
-          'go build -v -ldflags "-X main.version=${DRONE_COMMIT_SHA:0:8}" -a -tags netgo -o release/windows/amd64/drone-ansible.exe',
-        ],
-        'when': {
-          'event': {
-            'exclude': [
-              'tag'
-            ]
-          }
-        }
-      },
-      {
-        'name': 'build-tag',
-        'environment': {
-          'CGO_ENABLED': '0'
-        },
-        'commands': [
-          'go build -v -ldflags "-X main.version=${DRONE_TAG##v}" -a -tags netgo -o release/windows/amd64/drone-ansible.exe',
-        ],
-        'when': {
-          'event':  [
-            'tag'
-          ]
-        }
-      },
-      {
-        'name': 'executable',
-        'commands': [
-          './release/windows/amd64/drone-ansible.exe --help',
-        ]
-      },
-      {
-        'name': 'latest',
-        'environment': {
-          'USERNAME': {
-            'from_secret': 'docker_username'
-          },
-          'PASSWORD': {
-            'from_secret': 'docker_password'
-          },
-        },
-        'commands': [
-          'echo $env:PASSWORD | docker login --username $env:USERNAME --password-stdin',
-          'docker build --pull -f docker/Dockerfile.windows.%s -t plugins/ansible:windows-%s-amd64 .' % (version, version),
-          'docker run --rm plugins/ansible:windows-%s-amd64 --help' % version,
-          'docker push plugins/ansible:windows-%s-amd64' % version,
-        ],
-        'when': {
-          'ref': [
-            'refs/heads/master',
-          ]
-        }
-      },
-      {
-        'name': 'tagged',
-        'environment': {
-          'USERNAME': {
-            'from_secret': 'docker_username'
-          },
-          'PASSWORD': {
-            'from_secret': 'docker_password'
-          },
-        },
-        'commands': [
-          'echo $env:PASSWORD | docker login --username $env:USERNAME --password-stdin',
-          'docker build --pull -f docker/Dockerfile.windows.%s -t plugins/ansible:${DRONE_TAG##v}-windows-%s-amd64 .' % (version, version),
-          'docker run --rm plugins/ansible:${DRONE_TAG##v}-windows-%s-amd64 --help' % version,
-          'docker push plugins/ansible:${DRONE_TAG##v}-windows-%s-amd64' % version,
-        ],
-        'when': {
-          'ref': [
-            'refs/tags/**',
-          ]
-        }
-      }
-    ],
-    'depends_on': [],
-    'trigger': {
-      'ref': [
-        'refs/heads/master',
-        'refs/tags/**',
       ]
     }
   }
