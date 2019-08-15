@@ -253,6 +253,7 @@ def windows(version):
         'commands': [
           'echo $env:PASSWORD | docker login --username $env:USERNAME --password-stdin',
           'docker build --pull -f docker/Dockerfile.windows.%s -t plugins/ansible:windows-%s-amd64 .' % (version, version),
+          'docker run --rm plugins/ansible:windows-%s-amd64 --help' % version,
           'docker push plugins/ansible:windows-%s-amd64' % version,
         ],
         'when': {
@@ -274,6 +275,7 @@ def windows(version):
         'commands': [
           'echo $env:PASSWORD | docker login --username $env:USERNAME --password-stdin',
           'docker build --pull -f docker/Dockerfile.windows.%s -t plugins/ansible:${DRONE_TAG##v}-windows-%s-amd64 .' % (version, version),
+          'docker run --rm plugins/ansible:${DRONE_TAG##v}-windows-%s-amd64 --help' % version,
           'docker push plugins/ansible:${DRONE_TAG##v}-windows-%s-amd64' % version,
         ],
         'when': {
