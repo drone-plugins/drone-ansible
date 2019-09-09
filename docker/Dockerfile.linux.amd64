@@ -7,7 +7,7 @@ LABEL maintainer="Drone.IO Community <drone-dev@googlegroups.com>" \
 
 RUN apk add --no-cache bash git curl rsync openssh-client py-pip py-requests python2-dev libffi-dev libressl-dev libressl build-base && \
   pip install -U pip && \
-  pip install ansible==2.8.2 && \
+  pip install ansible==2.8.4 botocore==1.12.224 boto3==1.9.224 && \
   apk del python2-dev libffi-dev libressl-dev build-base
 
 ADD release/linux/amd64/drone-ansible /bin/
