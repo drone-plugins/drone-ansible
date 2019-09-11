@@ -6,6 +6,7 @@ LABEL maintainer="Drone.IO Community <drone-dev@googlegroups.com>" \
   org.label-schema.schema-version="1.0"
 
 RUN apk add --no-cache bash git curl rsync openssh-client py3-pip py3-requests python3-dev libffi-dev libressl-dev libressl build-base && \
+  apk add --no-cache py3-boto3 py3-botocore --repository=http://dl-cdn.alpinelinux.org/alpine/edge/testing && \
   pip3 install -U pip && \
   pip3 install ansible==2.8.4 && \
   apk del python3-dev libffi-dev libressl-dev build-base
