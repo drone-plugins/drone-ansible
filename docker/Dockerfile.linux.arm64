@@ -5,10 +5,10 @@ LABEL maintainer="Drone.IO Community <drone-dev@googlegroups.com>" \
   org.label-schema.vendor="Drone.IO Community" \
   org.label-schema.schema-version="1.0"
 
-RUN apk add --no-cache bash git curl rsync openssh-client py3-pip py3-requests python3-dev libffi-dev libressl-dev libressl build-base && \
+RUN apk add --no-cache bash git curl rsync openssh-client py3-pip py3-requests py3-boto3@testing python3-dev libffi-dev libressl-dev libressl build-base && \
   pip3 install -U pip && \
   pip3 install ansible==2.8.4 && \
-  apk del python3-dev libffi-dev libressl-dev build-base
+  apk del --no-cache python3-dev libffi-dev libressl-dev build-base
 
 ADD release/linux/arm64/drone-ansible /bin/
 ENTRYPOINT ["/bin/drone-ansible"]
