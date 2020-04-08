@@ -245,8 +245,8 @@ func (p *Plugin) ansibleCommand(inventory string) *exec.Cmd {
 		inventory,
 	}
 
-	if p.Config.SyntaxCheck {
-		args = append(args, "--syntax-check")
+	if p.Config.ListHosts {
+		args = append(args, "--list-hosts")
 		args = append(args, p.Config.Playbooks...)
 
 		return exec.Command(
@@ -255,8 +255,16 @@ func (p *Plugin) ansibleCommand(inventory string) *exec.Cmd {
 		)
 	}
 
-	if p.Config.ListHosts {
-		args = append(args, "--list-hosts")
+	if p.Config.VaultID != "" {
+		args = append(args, "--vault-id", p.Config.VaultID)
+	}
+
+	if p.Config.VaultPasswordFile != "" {
+		args = append(args, "--vault-password-file", p.Config.VaultPasswordFile)
+	}
+
+	if p.Config.SyntaxCheck {
+		args = append(args, "--syntax-check")
 		args = append(args, p.Config.Playbooks...)
 
 		return exec.Command(
@@ -315,14 +323,6 @@ func (p *Plugin) ansibleCommand(inventory string) *exec.Cmd {
 
 	if p.Config.Tags != "" {
 		args = append(args, "--tags", p.Config.Tags)
-	}
-
-	if p.Config.VaultID != "" {
-		args = append(args, "--vault-id", p.Config.VaultID)
-	}
-
-	if p.Config.VaultPasswordFile != "" {
-		args = append(args, "--vault-password-file", p.Config.VaultPasswordFile)
 	}
 
 	if p.Config.PrivateKeyFile != "" {
