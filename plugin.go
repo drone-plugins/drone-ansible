@@ -245,16 +245,22 @@ func (p *Plugin) ansibleCommand(inventory string) *exec.Cmd {
 		inventory,
 	}
 
-	if p.Config.SyntaxCheck {
-		args = append(args, "--syntax-check")
-		args = append(args, p.Config.Playbooks...)
-
-		return exec.Command(
-			"ansible-playbook",
-			args...,
-		)
+	if len(p.Config.ModulePath) > 0 {
+		args = append(args, "--module-path", strings.Join(p.Config.ModulePath, ":"))
+	}
+	
+	if p.Config.VaultID != "" {
+		args = append(args, "--vault-id", p.Config.VaultID)
 	}
 
+	if p.Config.VaultPasswordFile != "" {
+		args = append(args, "--vault-password-file", p.Config.VaultPasswordFile)
+	}
+	
+	for _, v := range p.Config.ExtraVars {
+		args = append(args, "--extra-vars", v)
+	}
+	
 	if p.Config.ListHosts {
 		args = append(args, "--list-hosts")
 		args = append(args, p.Config.Playbooks...)
@@ -265,8 +271,14 @@ func (p *Plugin) ansibleCommand(inventory string) *exec.Cmd {
 		)
 	}
 
-	for _, v := range p.Config.ExtraVars {
-		args = append(args, "--extra-vars", v)
+	if p.Config.SyntaxCheck {
+		args = append(args, "--syntax-check")
+		args = append(args, p.Config.Playbooks...)
+
+		return exec.Command(
+			"ansible-playbook",
+			args...,
+		)
 	}
 
 	if p.Config.Check {
@@ -301,10 +313,6 @@ func (p *Plugin) ansibleCommand(inventory string) *exec.Cmd {
 		args = append(args, "--list-tasks")
 	}
 
-	if len(p.Config.ModulePath) > 0 {
-		args = append(args, "--module-path", strings.Join(p.Config.ModulePath, ":"))
-	}
-
 	if p.Config.SkipTags != "" {
 		args = append(args, "--skip-tags", p.Config.SkipTags)
 	}
@@ -315,14 +323,6 @@ func (p *Plugin) ansibleCommand(inventory string) *exec.Cmd {
 
 	if p.Config.Tags != "" {
 		args = append(args, "--tags", p.Config.Tags)
-	}
-
-	if p.Config.VaultID != "" {
-		args = append(args, "--vault-id", p.Config.VaultID)
-	}
-
-	if p.Config.VaultPasswordFile != "" {
-		args = append(args, "--vault-password-file", p.Config.VaultPasswordFile)
 	}
 
 	if p.Config.PrivateKeyFile != "" {
