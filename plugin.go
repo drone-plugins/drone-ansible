@@ -225,7 +225,7 @@ func (p *Plugin) galaxyCommand() *exec.Cmd {
 	args := []string{
 		"install",
 		"--force",
-		"--role-file",
+		"-r",
 		p.Config.Galaxy,
 	}
 
