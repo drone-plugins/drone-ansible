@@ -32,6 +32,7 @@ type (
 		Tags              string
 		ExtraVars         []string
 		ModulePath        []string
+		NoGalaxyForce     bool
 		Check             bool
 		Diff              bool
 		FlushCache        bool
@@ -224,10 +225,16 @@ func (p *Plugin) requirementsCommand() *exec.Cmd {
 func (p *Plugin) galaxyCommand() *exec.Cmd {
 	args := []string{
 		"install",
-		"--force",
+	}
+
+	if p.Config.NoGalaxyForce == false {
+		args = append(args, "--force")
+	}
+
+	args = append(args,
 		"--role-file",
 		p.Config.Galaxy,
-	}
+	)
 
 	if p.Config.Verbose > 0 {
 		args = append(args, fmt.Sprintf("-%s", strings.Repeat("v", p.Config.Verbose)))
@@ -248,7 +255,7 @@ func (p *Plugin) ansibleCommand(inventory string) *exec.Cmd {
 	if len(p.Config.ModulePath) > 0 {
 		args = append(args, "--module-path", strings.Join(p.Config.ModulePath, ":"))
 	}
-	
+
 	if p.Config.VaultID != "" {
 		args = append(args, "--vault-id", p.Config.VaultID)
 	}
@@ -256,11 +263,11 @@ func (p *Plugin) ansibleCommand(inventory string) *exec.Cmd {
 	if p.Config.VaultPasswordFile != "" {
 		args = append(args, "--vault-password-file", p.Config.VaultPasswordFile)
 	}
-	
+
 	for _, v := range p.Config.ExtraVars {
 		args = append(args, "--extra-vars", v)
 	}
-	
+
 	if p.Config.ListHosts {
 		args = append(args, "--list-hosts")
 		args = append(args, p.Config.Playbooks...)
