@@ -72,7 +72,7 @@ func main() {
 		cli.BoolFlag{
 			Name:   "no-galaxy-force",
 			Usage:  "don't force overwriting an existing role or collection",
-			EnvVar: "NO_GALAXY_FORCE",
+			EnvVar: "PLUGIN_NO_GALAXY_FORCE",
 		},
 		cli.BoolFlag{
 			Name:   "check",
