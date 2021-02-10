@@ -69,10 +69,10 @@ func main() {
 			Usage:  "prepend paths to module library",
 			EnvVar: "PLUGIN_MODULE_PATH",
 		},
-		cli.BoolFlag{
-			Name:   "no-galaxy-force",
-			Usage:  "don't force overwriting an existing role or collection",
-			EnvVar: "PLUGIN_NO_GALAXY_FORCE",
+		cli.BoolTFlag{
+			Name:   "galaxy-force",
+			Usage:  "force overwriting an existing role or collection",
+			EnvVar: "PLUGIN_GALAXY_FORCE",
 		},
 		cli.BoolFlag{
 			Name:   "check",
@@ -210,7 +210,7 @@ func run(c *cli.Context) error {
 			Tags:          c.String("tags"),
 			ExtraVars:     c.StringSlice("extra-vars"),
 			ModulePath:    c.StringSlice("module-path"),
-			NoGalaxyForce: c.Bool("no-galaxy-force"),
+			GalaxyForce:   c.Bool("galaxy-force"),
 			Check:         c.Bool("check"),
 			Diff:          c.Bool("diff"),
 			FlushCache:    c.Bool("flush-cache"),

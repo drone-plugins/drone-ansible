@@ -32,7 +32,7 @@ type (
 		Tags              string
 		ExtraVars         []string
 		ModulePath        []string
-		NoGalaxyForce     bool
+		GalaxyForce       bool
 		Check             bool
 		Diff              bool
 		FlushCache        bool
@@ -227,7 +227,7 @@ func (p *Plugin) galaxyCommand() *exec.Cmd {
 		"install",
 	}
 
-	if p.Config.NoGalaxyForce == false {
+	if p.Config.GalaxyForce == true {
 		args = append(args, "--force")
 	}
 
