@@ -227,7 +227,7 @@ func (p *Plugin) galaxyCommand() *exec.Cmd {
 		"install",
 	}
 
-	if p.Config.GalaxyForce == true {
+	if p.Config.GalaxyForce {
 		args = append(args, "--force")
 	}
 
