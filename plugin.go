@@ -12,8 +12,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-var ansibleFolder = "/etc/ansible"
-var ansibleConfig = "/etc/ansible/ansible.cfg"
+const (
+	ansibleFolder = "/etc/ansible"
+	ansibleConfig = "/etc/ansible/ansible.cfg"
+	sshFolder     = "/root/.ssh"
+	sshKey        = "/root/.ssh/id_rsa"
+	sshConfig     = "/etc/ssh/ssh_config"
+)
 
 var ansibleContent = `
 [defaults]
@@ -136,21 +141,22 @@ func (p *Plugin) ansibleConfig() error {
 }
 
 func (p *Plugin) privateKey() error {
-	tmpfile, err := ioutil.TempFile("", "privateKey")
-
+	err := os.Mkdir(sshFolder, 0400)
 	if err != nil {
-		return errors.Wrap(err, "failed to create private key file")
+		return errors.Wrap(err, "failed to create .ssh folder")
 	}
 
-	if _, err := tmpfile.Write([]byte(p.Config.PrivateKey)); err != nil {
-		return errors.Wrap(err, "failed to write private key file")
+	err = ioutil.WriteFile(sshKey, []byte(p.Config.PrivateKey), 0400)
+	if err != nil {
+		return errors.Wrap(err, "failed to create private key")
 	}
 
-	if err := tmpfile.Close(); err != nil {
-		return errors.Wrap(err, "failed to close private key file")
+	err = ioutil.WriteFile(sshConfig, []byte("StrictHostKeyChecking no"), 0644)
+	if err != nil {
+		return errors.Wrap(err, "failed to update ssh_config")
 	}
 
-	p.Config.PrivateKeyFile = tmpfile.Name()
+	p.Config.PrivateKeyFile = sshKey
 	return nil
 }
 
