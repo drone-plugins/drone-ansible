@@ -30,7 +30,7 @@ name: default
 
 steps:
 - name: check ansible syntax
-  image: plugins/ansible:3
+  image: ghcr.io/hay-kot/drone-ansible:latest
   settings:
     playbook: ansible/playbook.yml
     galaxy: ansible/requirements.yml
@@ -50,7 +50,7 @@ pipeline:
           name: check ansible syntax
           spec:
             connectorRef: account.docker
-            image: plugins/ansible:3
+            image: ghcr.io/hay-kot/drone-ansible:latest
             type: Plugin
             settings:
               playbook: ansible/playbook.yml
