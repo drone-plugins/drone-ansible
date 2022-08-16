@@ -1,0 +1,15 @@
+name: go-ci
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "*"
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3.2.0
