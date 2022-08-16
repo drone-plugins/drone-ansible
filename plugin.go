@@ -12,58 +12,58 @@ import (
 	"github.com/pkg/errors"
 )
 
-var ansibleFolder = "/etc/ansible"
-var ansibleConfig = "/etc/ansible/ansible.cfg"
+const (
+	ansibleFolder = "/etc/ansible"
+	ansibleConfig = "/etc/ansible/ansible.cfg"
+)
 
-var ansibleContent = `
+const ansibleContent = `
 [defaults]
 host_key_checking = False
 `
 
-type (
-	Config struct {
-		Requirements      string
-		Galaxy            string
-		Inventories       []string
-		Playbooks         []string
-		Limit             string
-		SkipTags          string
-		StartAtTask       string
-		Tags              string
-		ExtraVars         []string
-		ModulePath        []string
-		GalaxyForce       bool
-		Check             bool
-		Diff              bool
-		FlushCache        bool
-		ForceHandlers     bool
-		ListHosts         bool
-		ListTags          bool
-		ListTasks         bool
-		SyntaxCheck       bool
-		Forks             int
-		VaultID           string
-		VaultPassword     string
-		VaultPasswordFile string
-		Verbose           int
-		PrivateKey        string
-		PrivateKeyFile    string
-		User              string
-		Connection        string
-		Timeout           int
-		SSHCommonArgs     string
-		SFTPExtraArgs     string
-		SCPExtraArgs      string
-		SSHExtraArgs      string
-		Become            bool
-		BecomeMethod      string
-		BecomeUser        string
-	}
+type Config struct {
+	Requirements      string
+	Galaxy            string
+	Inventories       []string
+	Playbooks         []string
+	Limit             string
+	SkipTags          string
+	StartAtTask       string
+	Tags              string
+	ExtraVars         []string
+	ModulePath        []string
+	GalaxyForce       bool
+	Check             bool
+	Diff              bool
+	FlushCache        bool
+	ForceHandlers     bool
+	ListHosts         bool
+	ListTags          bool
+	ListTasks         bool
+	SyntaxCheck       bool
+	Forks             int
+	VaultID           string
+	VaultPassword     string
+	VaultPasswordFile string
+	Verbose           int
+	PrivateKey        string
+	PrivateKeyFile    string
+	User              string
+	Connection        string
+	Timeout           int
+	SSHCommonArgs     string
+	SFTPExtraArgs     string
+	SCPExtraArgs      string
+	SSHExtraArgs      string
+	Become            bool
+	BecomeMethod      string
+	BecomeUser        string
+}
 
-	Plugin struct {
-		Config Config
-	}
-)
+type Plugin struct {
+	Config Config
+}
 
 func (p *Plugin) Exec() error {
 	if err := p.playbooks(); err != nil {
