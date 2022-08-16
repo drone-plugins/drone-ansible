@@ -20,7 +20,7 @@ archives:
 dockers:
   - id: drone-ansible-amd64
     image_templates:
-      - "ghrc.io/hay-kot/drone-ansible:latest"
+      - "ghcr.io/hay-kot/drone-ansible:latest"
     goos: linux
     goarch: amd64
     goarm: ""
