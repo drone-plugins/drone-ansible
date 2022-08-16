@@ -57,7 +57,7 @@ pipeline:
               syntax_check: true
 ```
 
-##### Configuration Properties
+### Configuration Properties
 **become** (boolean): run operations with become
  - Default: False
  - Required: False
