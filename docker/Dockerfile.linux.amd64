@@ -10,5 +10,5 @@ RUN apk add --no-cache bash git curl rsync openssh-client sshpass py3-pip py3-re
   pip3 install ansible==6.2.0 boto3==1.13.10 && \
   apk del --no-cache python3-dev libffi-dev libressl-dev build-base
 
-ADD release/linux/amd64/drone-ansible /bin/
+ADD drone-ansible /bin/
 ENTRYPOINT ["/bin/drone-ansible"]
