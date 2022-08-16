@@ -1,5 +1,7 @@
 # drone-ansible
 
+[![go-ci](https://github.com/hay-kot/drone-ansible/actions/workflows/go.yaml/badge.svg)](https://github.com/hay-kot/drone-ansible/actions/workflows/go.yaml)
+
 Drone plugin to provision infrastructure with [Ansible](https://www.ansible.com/). For the usage information and a listing of the available options please take a look at [the docs](http://plugins.drone.io/drone-plugins/drone-ansible/).
 
 
