@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -128,7 +127,7 @@ func (p *Plugin) ansibleConfig() error {
 		return errors.Wrap(err, "failed to create ansible directory")
 	}
 
-	if err := ioutil.WriteFile(ansibleConfig, []byte(ansibleContent), 0600); err != nil {
+	if err := os.WriteFile(ansibleConfig, []byte(ansibleContent), 0600); err != nil {
 		return errors.Wrap(err, "failed to create ansible config")
 	}
 
@@ -136,7 +135,7 @@ func (p *Plugin) ansibleConfig() error {
 }
 
 func (p *Plugin) privateKey() error {
-	tmpfile, err := ioutil.TempFile("", "privateKey")
+	tmpfile, err := os.CreateTemp("", "privateKey")
 
 	if err != nil {
 		return errors.Wrap(err, "failed to create private key file")
@@ -155,7 +154,7 @@ func (p *Plugin) privateKey() error {
 }
 
 func (p *Plugin) vaultPass() error {
-	tmpfile, err := ioutil.TempFile("", "vaultPass")
+	tmpfile, err := os.CreateTemp("", "vaultPass")
 
 	if err != nil {
 		return errors.Wrap(err, "failed to create vault password file")
