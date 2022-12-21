@@ -58,12 +58,12 @@ steps:
     environment:
       CGO_ENABLED: "0"
     commands:
-      - go build -v -ldflags "-X main.version=" -a -tags netgo -o release/linux/amd64/drone-sftp .
+      - go build -v -ldflags "-X main.version=" -a -tags netgo -o release/linux/amd64/drone-ansible .
   - name: docker
     image: plugins/docker
     settings:
       dockerfile: docker/Dockerfile.linux.amd64
-      repo: plugins/sftp
+      repo: plugins/ansible
       username:
         from_secret: docker_username
       password:
@@ -102,12 +102,12 @@ steps:
     environment:
       CGO_ENABLED: "0"
     commands:
-      - go build -v -ldflags "-X main.version=" -a -tags netgo -o release/linux/arm64/drone-sftp .
+      - go build -v -ldflags "-X main.version=" -a -tags netgo -o release/linux/arm64/drone-ansible .
   - name: docker
     image: plugins/docker
     settings:
       dockerfile: docker/Dockerfile.linux.arm64
-      repo: plugins/sftp
+      repo: plugins/ansible
       username:
         from_secret: docker_username
       password:
