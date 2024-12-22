@@ -5,10 +5,34 @@ LABEL maintainer="Drone.IO Community <drone-dev@googlegroups.com>" \
   org.label-schema.vendor="Drone.IO Community" \
   org.label-schema.schema-version="1.0"
 
-RUN apk add --no-cache bash git curl rsync openssh-client sshpass py3-pip py3-requests py3-paramiko python3-dev libffi-dev libressl-dev libressl build-base && \
-  pip3 install -U pip && \
-  pip3 install ansible-core==2.14 boto3==1.13.10 && \
-  apk del --no-cache python3-dev libffi-dev libressl-dev build-base
+# Install dependencies and create a virtual environment
+RUN apk add --no-cache \
+    bash \
+    git \
+    curl \
+    rsync \
+    openssh-client \
+    sshpass \
+    py3-pip \
+    py3-requests \
+    py3-paramiko \
+    python3-dev \
+    libffi-dev \
+    libressl-dev \
+    libressl \
+    build-base && \
+    python3 -m venv /opt/venv && \
+    . /opt/venv/bin/activate && \
+    pip install --no-cache-dir -U pip && \
+    pip install --no-cache-dir ansible-core==2.14 boto3==1.13.10 && \
+    deactivate && \
+    apk del python3-dev libffi-dev libressl-dev build-base
 
-ADD release/linux/amd64/drone-ansible /bin/
+# Set the PATH to include the virtual environment
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Add the built binary to the image
+COPY release/linux/amd64/drone-ansible /bin/
+
+# Define the entrypoint
 ENTRYPOINT ["/bin/drone-ansible"]

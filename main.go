@@ -20,6 +20,11 @@ func main() {
 	app.Version = version
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
+			Name:   "mode",
+			Usage:  "Mode of the functionality",
+			EnvVar: "PLUGIN_MODE",
+		},
+		cli.StringFlag{
 			Name:   "requirements",
 			Usage:  "path to python requirements",
 			EnvVar: "PLUGIN_REQUIREMENTS",
@@ -190,6 +195,98 @@ func main() {
 			Usage:  "run operations as this user",
 			EnvVar: "PLUGIN_BECOME_USER,ANSIBLE_BECOME_USER",
 		},
+		cli.BoolFlag{
+			Name:   "disable-host-key-checking",
+			Usage:  "Disable validation of the host's SSH server keys",
+			EnvVar: "PLUGIN_DISABLE_HOST_KEY_CHECKING",
+		},
+		cli.BoolFlag{
+			Name:   "host-key-checking",
+			Usage:  "Enable validation of the host's SSH server keys",
+			EnvVar: "PLUGIN_HOST_KEY_CHECKING",
+		},
+		cli.StringFlag{
+			Name:   "installation",
+			Usage:  "Specify the path to Ansible installation",
+			EnvVar: "PLUGIN_INSTALLATION",
+		},
+		cli.StringFlag{
+			Name:   "inventory-content",
+			Usage:  "Inline inventory content as a string",
+			EnvVar: "PLUGIN_INVENTORY_CONTENT",
+		},
+		cli.BoolFlag{
+			Name:   "sudo",
+			Usage:  "Use sudo for operations",
+			EnvVar: "PLUGIN_SUDO",
+		},
+		cli.StringFlag{
+			Name:   "sudo-user",
+			Usage:  "Specify the sudo user (default: root)",
+			EnvVar: "PLUGIN_SUDO_USER",
+		},
+		cli.StringFlag{
+			Name:   "vault-tmp-path",
+			Usage:  "Temporary path for generated vault files",
+			EnvVar: "PLUGIN_VAULT_TMP_PATH",
+		},
+		// Ad-Hoc Specific Flags
+		cli.StringFlag{
+			Name:   "hosts",
+			Usage:  "Target hosts for ad-hoc command",
+			EnvVar: "PLUGIN_HOSTS",
+		},
+		cli.StringFlag{
+			Name:   "module",
+			Usage:  "Module name for ad-hoc execution",
+			EnvVar: "PLUGIN_MODULE",
+		},
+		cli.StringFlag{
+			Name:   "module-arguments",
+			Usage:  "Arguments for the specified module",
+			EnvVar: "PLUGIN_MODULE_ARGUMENTS",
+		},
+		cli.BoolFlag{
+			Name:   "dynamic-inventory",
+			Usage:  "Enable dynamic inventory",
+			EnvVar: "PLUGIN_DYNAMIC_INVENTORY",
+		},
+		cli.StringFlag{
+			Name:   "extras",
+			Usage:  "Additional options for ad-hoc execution",
+			EnvVar: "PLUGIN_EXTRAS",
+		},
+		cli.StringFlag{
+			Name:   "vault-credentials-key",
+			Usage:  "Vault credentials ID for encrypted files",
+			EnvVar: "PLUGIN_VAULT_CREDENTIALS_KEY",
+		},
+		// Vault Specific Flags
+		cli.StringFlag{
+			Name:   "action",
+			Usage:  "Action for ansible-vault (e.g., encrypt, decrypt, view)",
+			EnvVar: "PLUGIN_ACTION",
+		},
+		cli.StringFlag{
+			Name:   "content",
+			Usage:  "Content to encrypt or decrypt",
+			EnvVar: "PLUGIN_CONTENT",
+		},
+		cli.StringFlag{
+			Name:   "input",
+			Usage:  "Input file for the vault operation",
+			EnvVar: "PLUGIN_INPUT",
+		},
+		cli.StringFlag{
+			Name:   "output",
+			Usage:  "Output file for the vault operation",
+			EnvVar: "PLUGIN_OUTPUT",
+		},
+		cli.StringFlag{
+			Name:   "new-vault-credentials-key",
+			Usage:  "New Vault Credentials Key for rekeying",
+			EnvVar: "PLUGIN_NEW_VAULT_CREDENTIALS_KEY",
+		},
 	}
 
 	if err := app.Run(os.Args); err != nil {
@@ -200,49 +297,85 @@ func main() {
 func run(c *cli.Context) error {
 	plugin := Plugin{
 		Config: Config{
-			Requirements:  c.String("requirements"),
-			Galaxy:        c.String("galaxy"),
-			Inventories:   c.StringSlice("inventory"),
-			Playbooks:     c.StringSlice("playbook"),
-			Limit:         c.String("limit"),
-			SkipTags:      c.String("skip-tags"),
-			StartAtTask:   c.String("start-at-task"),
-			Tags:          c.String("tags"),
-			ExtraVars:     c.StringSlice("extra-vars"),
-			ModulePath:    c.StringSlice("module-path"),
-			GalaxyForce:   c.Bool("galaxy-force"),
-			Check:         c.Bool("check"),
-			Diff:          c.Bool("diff"),
-			FlushCache:    c.Bool("flush-cache"),
-			ForceHandlers: c.Bool("force-handlers"),
-			ListHosts:     c.Bool("list-hosts"),
-			ListTags:      c.Bool("list-tags"),
-			ListTasks:     c.Bool("list-tasks"),
-			SyntaxCheck:   c.Bool("syntax-check"),
-			Forks:         c.Int("forks"),
-			VaultID:       c.String("vailt-id"),
-			VaultPassword: c.String("vault-password"),
-			Verbose:       c.Int("verbose"),
-			PrivateKey:    c.String("private-key"),
-			User:          c.String("user"),
-			Connection:    c.String("connection"),
-			Timeout:       c.Int("timeout"),
-			SSHCommonArgs: c.String("ssh-common-args"),
-			SFTPExtraArgs: c.String("sftp-extra-args"),
-			SCPExtraArgs:  c.String("scp-extra-args"),
-			SSHExtraArgs:  c.String("ssh-extra-args"),
-			Become:        c.Bool("become"),
-			BecomeMethod:  c.String("become-method"),
-			BecomeUser:    c.String("become-user"),
+			Mode:                   c.String("mode"),
+			Requirements:           c.String("requirements"),
+			Galaxy:                 c.String("galaxy"),
+			Inventories:            c.StringSlice("inventory"),
+			Playbooks:              c.StringSlice("playbook"),
+			Limit:                  c.String("limit"),
+			SkipTags:               c.String("skip-tags"),
+			StartAtTask:            c.String("start-at-task"),
+			Tags:                   c.String("tags"),
+			ExtraVars:              c.StringSlice("extra-vars"),
+			ModulePath:             c.StringSlice("module-path"),
+			GalaxyForce:            c.Bool("galaxy-force"),
+			Check:                  c.Bool("check"),
+			Diff:                   c.Bool("diff"),
+			FlushCache:             c.Bool("flush-cache"),
+			ForceHandlers:          c.Bool("force-handlers"),
+			ListHosts:              c.Bool("list-hosts"),
+			ListTags:               c.Bool("list-tags"),
+			ListTasks:              c.Bool("list-tasks"),
+			SyntaxCheck:            c.Bool("syntax-check"),
+			Forks:                  c.Int("forks"),
+			VaultID:                c.String("vailt-id"),
+			VaultPassword:          c.String("vault-password"),
+			Verbose:                c.Int("verbose"),
+			PrivateKey:             c.String("private-key"),
+			User:                   c.String("user"),
+			Connection:             c.String("connection"),
+			Timeout:                c.Int("timeout"),
+			SSHCommonArgs:          c.String("ssh-common-args"),
+			SFTPExtraArgs:          c.String("sftp-extra-args"),
+			SCPExtraArgs:           c.String("scp-extra-args"),
+			SSHExtraArgs:           c.String("ssh-extra-args"),
+			Become:                 c.Bool("become"),
+			BecomeMethod:           c.String("become-method"),
+			BecomeUser:             c.String("become-user"),
+			DisableHostKeyChecking: c.Bool("disable-host-key-checking"), // Disable SSH host key checking
+			HostKeyChecking:        c.Bool("host-key-checking"),         // Enable SSH host key validation
+			Installation:           c.String("installation"),            // Path to the Ansible executable or installation
+			InventoryContent:       c.String("inventory-content"),       // Inline inventory content
+			Sudo:                   c.Bool("sudo"),                      // Use sudo for operations
+			SudoUser:               c.String("sudo-user"),               // Sudo user for operations
+			VaultTmpPath:           c.String("vault-tmp-path"),          // Temporary path for vault password files and others
+			// Ad-Hoc Parameters
+			Hosts:               c.String("hosts"),                 // Target hosts for ad-hoc command
+			Module:              c.String("module"),                // Module name for ad-hoc command
+			ModuleArguments:     c.String("module-arguments"),      // Module arguments for ad-hoc command
+			DynamicInventory:    c.Bool("dynamic-inventory"),       // Enable dynamic inventory
+			Extras:              c.String("extras"),                // Additional options for ad-hoc execution
+			VaultCredentialsKey: c.String("vault-credentials-key"), // Vault credentials ID for encrypted files
+			// Vault Parameters
+			Action:                 c.String("action"),
+			Content:                c.String("content"),
+			Input:                  c.String("input"),
+			Output:                 c.String("output"),
+			NewVaultCredentialsKey: c.String("new-vault-credentials-key"),
 		},
 	}
 
-	if len(plugin.Config.Playbooks) == 0 {
-		return errors.New("you must provide a playbook")
-	}
-
-	if len(plugin.Config.Inventories) == 0 {
-		return errors.New("you must provide an inventory")
+	// Validate mode and required parameters based on the mode
+	switch plugin.Config.Mode {
+	case "playbook":
+		if len(plugin.Config.Playbooks) == 0 {
+			return errors.New("you must provide a playbook in playbook mode")
+		}
+		if len(plugin.Config.Inventories) == 0 && plugin.Config.InventoryContent == "" {
+			return errors.New("you must provide an inventory or inventory content in playbook mode")
+		}
+	case "adhoc":
+		if plugin.Config.Hosts == "" {
+			return errors.New("you must provide hosts for adhoc mode")
+		}
+		// Module is optional; defaults to "command" if not provided
+	case "vault":
+		if plugin.Config.VaultCredentialsKey == "" {
+			return errors.New("VaultCredentialsKey is mandatory for vault mode")
+		}
+		// Action, Content, Input, and Output are optional
+	default:
+		return errors.New("invalid mode: specify 'playbook', 'adhoc', or 'vault'")
 	}
 
 	return plugin.Exec()
