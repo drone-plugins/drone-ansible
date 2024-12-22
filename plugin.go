@@ -322,23 +322,28 @@ func (p *Plugin) executeVault() error {
 	args := []string{p.Config.Action}
 
 	// Step 4: Handle input or content based on the action
-	if err := handleInputAndContent(p.Config, args); err != nil {
+	if err := handleInputAndContent(p.Config, &args); err != nil {
 		return err
 	}
 
 	// Step 5: Add output file (if applicable)
-	handleOutputFile(p.Config.Output, args)
+	handleOutputFile(p.Config.Output, &args)
 
 	// Step 6: Handle vault password key
-	if err := handleVaultPassword(p.Config.VaultCredentialsKey, args); err != nil {
+	vaultPasswordFile, err := handleVaultPassword(p.Config.VaultCredentialsKey, p.Config.VaultTmpPath, &args)
+	if err != nil {
 		return err
 	}
+	defer os.Remove(vaultPasswordFile) // Clean up the temporary password file after execution
 
 	// Step 7: Handle new vault password key for rekeying
+	var newVaultPasswordFile string
 	if p.Config.Action == ActionRekey && p.Config.NewVaultCredentialsKey != "" {
-		if err := handleNewVaultPassword(p.Config.NewVaultCredentialsKey, args); err != nil {
+		newVaultPasswordFile, err = handleNewVaultPassword(p.Config.NewVaultCredentialsKey, p.Config.VaultTmpPath, &args)
+		if err != nil {
 			return err
 		}
+		defer os.Remove(newVaultPasswordFile) // Cleanup after execution
 	}
 
 	// Step 8: Construct and execute the command
@@ -374,7 +379,7 @@ func validateAction(action string) error {
 }
 
 // handleInputAndContent validates and adds input or content based on action
-func handleInputAndContent(config Config, args []string) error {
+func handleInputAndContent(config Config, args *[]string) error {
 	if config.Action == ActionEncryptString {
 		if config.Content == "" {
 			return errors.New("content is required for encrypt_string action")
@@ -382,66 +387,104 @@ func handleInputAndContent(config Config, args []string) error {
 
 		// If output is provided, do not use --stdin-name
 		if config.Output == "" {
-			args = append(args, "--stdin-name", "SECRET_VAR")
+			*args = append(*args, "--stdin-name", "SECRET_VAR")
 		}
 	} else {
 		if config.Input == "" {
 			return fmt.Errorf("input file is required for %s action", config.Action)
 		}
-		args = append(args, config.Input)
+		*args = append(*args, config.Input)
 	}
 	return nil
 }
 
 // handleOutputFile adds the output file flag if provided
-func handleOutputFile(output string, args []string) {
+func handleOutputFile(output string, args *[]string) {
 	if output != "" {
-		args = append(args, "--output", output)
+		*args = append(*args, "--output", output)
 	}
 }
 
 // handleVaultPassword writes the vault password to a temporary file and appends it to args
-func handleVaultPassword(vaultKey string, args []string) error {
+func handleVaultPassword(vaultKey string, vaultTmpPath string, args *[]string) (string, error) {
 	if vaultKey == "" {
-		return errors.New("vaultCredentialsKey is required for vault operations")
+		return "", errors.New("vaultCredentialsKey is required for vault operations")
 	}
-	tmpVaultFile, err := os.CreateTemp("", "vault-pass")
+
+	// Create a temporary Vault password file
+	tmpVaultFile, err := createVaultTmpFile(vaultTmpPath, "vault-pass")
 	if err != nil {
-		return fmt.Errorf("failed to create temporary vault password file: %w", err)
+		return "", fmt.Errorf("failed to create temporary vault password file: %w", err)
 	}
-	defer os.Remove(tmpVaultFile.Name()) // Ensure cleanup after the function
+
+	// Write the password to the file
 	if _, err := tmpVaultFile.WriteString(vaultKey); err != nil {
-		os.Remove(tmpVaultFile.Name()) // Cleanup on failure
-		return fmt.Errorf("failed to write vault key to temporary file: %w", err)
+		tmpVaultFile.Close()
+		return "", fmt.Errorf("failed to write vault key to temporary file: %w", err)
 	}
-	args = append(args, "--vault-password-file", tmpVaultFile.Name())
-	return nil
+
+	// Close the file to ensure the data is flushed
+	if err := tmpVaultFile.Close(); err != nil {
+		return "", fmt.Errorf("failed to close vault password file: %w", err)
+	}
+
+	// Set correct permissions
+	if err := os.Chmod(tmpVaultFile.Name(), 0600); err != nil {
+		return "", fmt.Errorf("failed to set permissions on vault password file: %w", err)
+	}
+
+	// Append the file path to the args
+	*args = append(*args, "--vault-password-file", tmpVaultFile.Name())
+	return tmpVaultFile.Name(), nil
 }
 
-// handleNewVaultPassword writes the new vault password to a temporary file and appends it to args
-func handleNewVaultPassword(newVaultKey string, args []string) error {
-	tmpNewVaultFile, err := os.CreateTemp("", "new-vault-pass")
+func handleNewVaultPassword(newVaultKey string, vaultTmpPath string, args *[]string) (string, error) {
+	// Create a temporary file for the new vault password
+	tmpNewVaultFile, err := createVaultTmpFile(vaultTmpPath, "new-vault-pass")
 	if err != nil {
-		return fmt.Errorf("failed to create temporary new vault password file: %w", err)
+		return "", fmt.Errorf("failed to create temporary new vault password file: %w", err)
 	}
-	defer os.Remove(tmpNewVaultFile.Name()) // Ensure cleanup after the function
+
+	// Write the new password to the file
 	if _, err := tmpNewVaultFile.WriteString(newVaultKey); err != nil {
-		os.Remove(tmpNewVaultFile.Name()) // Cleanup on failure
-		return fmt.Errorf("failed to write new vault key to temporary file: %w", err)
+		tmpNewVaultFile.Close()
+		return "", fmt.Errorf("failed to write new vault key to temporary file: %w", err)
 	}
-	args = append(args, "--new-vault-password-file", tmpNewVaultFile.Name())
-	return nil
+
+	// Close the file to ensure the data is flushed
+	if err := tmpNewVaultFile.Close(); err != nil {
+		return "", fmt.Errorf("failed to close new vault password file: %w", err)
+	}
+
+	// Append the new vault password file to the args
+	*args = append(*args, "--new-vault-password-file", tmpNewVaultFile.Name())
+	return tmpNewVaultFile.Name(), nil
 }
 
-// Helper function to locate the vault password file based on the vaultCredentialsId
-func locateVaultPasswordFile(vaultCredentialsId string) (string, error) {
-	// Simulate retrieval of the vault password file based on the given ID
-	// Example: /etc/ansible/vaults/<vaultCredentialsId>.pass
-	vaultFilePath := fmt.Sprintf("/etc/ansible/vaults/%s.pass", vaultCredentialsId)
-	if _, err := os.Stat(vaultFilePath); os.IsNotExist(err) {
-		return "", errors.New("vault password file not found for the given vaultCredentialsId")
+// createVaultTmpFile creates a temporary file in the specified VaultTmpPath or system default
+func createVaultTmpFile(vaultTmpPath, prefix string) (*os.File, error) {
+	if vaultTmpPath != "" {
+		if err := ensureDirectoryExists(vaultTmpPath); err != nil {
+			return nil, err
+		}
+		return os.CreateTemp(vaultTmpPath, prefix)
 	}
-	return vaultFilePath, nil
+	return os.CreateTemp("", prefix)
+}
+
+// ensureDirectoryExists ensures the directory exists or creates it
+func ensureDirectoryExists(dir string) error {
+	info, err := os.Stat(dir)
+	if os.IsNotExist(err) {
+		return os.MkdirAll(dir, 0755)
+	}
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%s exists but is not a directory", dir)
+	}
+	return nil
 }
 
 func (p *Plugin) ansibleConfig() error {
