@@ -355,6 +355,11 @@ func run(c *cli.Context) error {
 		},
 	}
 
+	// Set default mode to "playbook" if not explicitly provided
+	if plugin.Config.Mode == "" {
+		plugin.Config.Mode = "playbook"
+	}
+
 	// Validate mode and required parameters based on the mode
 	switch plugin.Config.Mode {
 	case "playbook":
