@@ -2,3 +2,5 @@ release/
 
 coverage.out
 drone-ansible
+
+.codegpt

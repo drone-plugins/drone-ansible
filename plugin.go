@@ -322,8 +322,16 @@ func (p *Plugin) executeVault() error {
 	args := []string{p.Config.Action}
 
 	// Step 4: Handle input or content based on the action
-	if err := handleInputAndContent(p.Config, &args); err != nil {
-		return err
+	if p.Config.Action == ActionEncryptString {
+		if p.Config.Content == "" {
+			return errors.New("content is required for encrypt_string action")
+		}
+		args = append(args, "--output", p.Config.Output)
+	} else {
+		if p.Config.Input == "" {
+			return fmt.Errorf("input file is required for %s action", p.Config.Action)
+		}
+		args = append(args, p.Config.Input)
 	}
 
 	// Step 5: Add output file (if applicable)
@@ -337,24 +345,35 @@ func (p *Plugin) executeVault() error {
 	defer os.Remove(vaultPasswordFile) // Clean up the temporary password file after execution
 
 	// Step 7: Handle new vault password key for rekeying
-	var newVaultPasswordFile string
 	if p.Config.Action == ActionRekey && p.Config.NewVaultCredentialsKey != "" {
-		newVaultPasswordFile, err = handleNewVaultPassword(p.Config.NewVaultCredentialsKey, p.Config.VaultTmpPath, &args)
+		newVaultPasswordFile, err := handleNewVaultPassword(p.Config.NewVaultCredentialsKey, p.Config.VaultTmpPath, &args)
 		if err != nil {
 			return err
 		}
 		defer os.Remove(newVaultPasswordFile) // Cleanup after execution
 	}
 
-	// Step 8: Construct and execute the command
+	// Step 8: Construct the command
 	cmd := exec.Command(vaultExecutable, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	// Step 9: Log the command for debugging purposes
+	// Step 9: Pass the string content via stdin if encrypt_string
+	if p.Config.Action == ActionEncryptString {
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			return fmt.Errorf("failed to open stdin pipe: %w", err)
+		}
+		go func() {
+			defer stdin.Close()
+			stdin.Write([]byte(p.Config.Content))
+		}()
+	}
+
+	// Step 10: Log the command for debugging purposes
 	fmt.Printf("Executing command: %s %v\n", vaultExecutable, args)
 
-	// Step 10: Execute the command
+	// Step 11: Execute the command
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("ansible-vault command failed: %w", err)
 	}
@@ -374,26 +393,6 @@ func validateAction(action string) error {
 	}
 	if !validActions[action] {
 		return fmt.Errorf("invalid action: %s. Supported actions: encrypt, decrypt, encrypt_string, view, edit, rekey", action)
-	}
-	return nil
-}
-
-// handleInputAndContent validates and adds input or content based on action
-func handleInputAndContent(config Config, args *[]string) error {
-	if config.Action == ActionEncryptString {
-		if config.Content == "" {
-			return errors.New("content is required for encrypt_string action")
-		}
-
-		// If output is provided, do not use --stdin-name
-		if config.Output == "" {
-			*args = append(*args, "--stdin-name", "SECRET_VAR")
-		}
-	} else {
-		if config.Input == "" {
-			return fmt.Errorf("input file is required for %s action", config.Action)
-		}
-		*args = append(*args, config.Input)
 	}
 	return nil
 }
