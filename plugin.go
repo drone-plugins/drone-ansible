@@ -14,49 +14,88 @@ import (
 var ansibleFolder = "/etc/ansible"
 var ansibleConfig = "/etc/ansible/ansible.cfg"
 
-var ansibleContent = `
-[defaults]
-host_key_checking = False
-`
+// var ansibleContent = `
+// [defaults]
+// host_key_checking = False
+// `
+
+const (
+	ModePlaybook = "playbook"
+	ModeAdhoc    = "adhoc"
+	ModeVault    = "vault"
+)
+
+// Constants for valid actions
+const (
+	ActionEncrypt       = "encrypt"
+	ActionDecrypt       = "decrypt"
+	ActionEncryptString = "encrypt_string"
+	ActionView          = "view"
+	ActionEdit          = "edit"
+	ActionRekey         = "rekey"
+)
 
 type (
 	Config struct {
-		Requirements      string
-		Galaxy            string
-		Inventories       []string
-		Playbooks         []string
-		Limit             string
-		SkipTags          string
-		StartAtTask       string
-		Tags              string
-		ExtraVars         []string
-		ModulePath        []string
-		GalaxyForce       bool
-		Check             bool
-		Diff              bool
-		FlushCache        bool
-		ForceHandlers     bool
-		ListHosts         bool
-		ListTags          bool
-		ListTasks         bool
-		SyntaxCheck       bool
-		Forks             int
-		VaultID           string
-		VaultPassword     string
-		VaultPasswordFile string
-		Verbose           int
-		PrivateKey        string
-		PrivateKeyFile    string
-		User              string
-		Connection        string
-		Timeout           int
-		SSHCommonArgs     string
-		SFTPExtraArgs     string
-		SCPExtraArgs      string
-		SSHExtraArgs      string
-		Become            bool
-		BecomeMethod      string
-		BecomeUser        string
+		Mode                   string
+		Requirements           string
+		Galaxy                 string
+		Inventories            []string
+		Playbooks              []string
+		Limit                  string
+		SkipTags               string
+		StartAtTask            string
+		Tags                   string
+		ExtraVars              []string
+		ModulePath             []string
+		GalaxyForce            bool
+		Check                  bool
+		Diff                   bool
+		FlushCache             bool
+		ForceHandlers          bool
+		ListHosts              bool
+		ListTags               bool
+		ListTasks              bool
+		SyntaxCheck            bool
+		Forks                  int
+		VaultID                string
+		VaultPassword          string
+		VaultPasswordFile      string
+		Verbose                int
+		PrivateKey             string
+		PrivateKeyFile         string
+		User                   string
+		Connection             string
+		Timeout                int
+		SSHCommonArgs          string
+		SFTPExtraArgs          string
+		SCPExtraArgs           string
+		SSHExtraArgs           string
+		Become                 bool
+		BecomeMethod           string
+		BecomeUser             string
+		DisableHostKeyChecking bool   // Disable SSH host key checking
+		HostKeyChecking        bool   // Enable SSH host key validation
+		Installation           string // Path to the Ansible executable or installation
+		InventoryContent       string // Inline inventory content
+		Sudo                   bool   // Use sudo for operations
+		SudoUser               string // Sudo user for operations
+		VaultTmpPath           string // Temporary path for vault password files and others
+		// Ad-Hoc Parameters
+		Hosts               string // Target hosts for ad-hoc command
+		Module              string // Module name for ad-hoc command
+		ModuleArguments     string // Module arguments for ad-hoc command
+		DynamicInventory    bool   // Enable dynamic inventory
+		Extras              string // Additional options for ad-hoc execution
+		VaultCredentialsKey string // Vault credentials ID for encrypted files (optional)
+		// Inventory          string
+
+		// Vault Parameters
+		Action                 string // Action for vault operation (e.g., encrypt, decrypt)
+		Content                string // Content for vault operation
+		Input                  string // Input file for vault operation
+		NewVaultCredentialsKey string // New vault credentials ID for rekeying
+		Output                 string // Output file for vault operation
 	}
 
 	Plugin struct {
@@ -65,6 +104,19 @@ type (
 )
 
 func (p *Plugin) Exec() error {
+	switch p.Config.Mode {
+	case ModePlaybook:
+		return p.executePlaybook()
+	case ModeAdhoc:
+		return p.executeAdhoc()
+	case ModeVault:
+		return p.executeVault()
+	default:
+		return errors.New("invalid mode: specify 'playbook' or 'adhoc'")
+	}
+}
+
+func (p *Plugin) executePlaybook() error {
 	if err := p.playbooks(); err != nil {
 		return err
 	}
@@ -87,6 +139,16 @@ func (p *Plugin) Exec() error {
 		}
 
 		defer os.Remove(p.Config.VaultPasswordFile)
+	}
+
+	// Handle inline inventory content
+	if err := p.setupInventory(); err != nil {
+		return err
+	}
+
+	// Validate custom Ansible installation
+	if err := p.validateInstallation(); err != nil {
+		return err
 	}
 
 	commands := []*exec.Cmd{
@@ -122,12 +184,321 @@ func (p *Plugin) Exec() error {
 	return nil
 }
 
+// executeAdhoc executes the Ansible Ad-Hoc command
+func (p *Plugin) executeAdhoc() error {
+	// Step 1: Validate required parameters
+	if p.Config.Hosts == "" {
+		return errors.New("hosts parameter is required for ad-hoc execution")
+	}
+
+	// Step 2: Default to 'command' module if no module is provided
+	module := p.Config.Module
+	if module == "" {
+		module = "command"
+	}
+
+	// Step 3: Build arguments for the ad-hoc command
+	args := []string{
+		p.Config.Hosts, // Target hosts
+		"-m", module,   // Module to execute
+	}
+
+	// Step 4: Add module arguments
+	if p.Config.ModuleArguments != "" {
+		args = append(args, "-a", p.Config.ModuleArguments)
+	}
+
+	// Step 5: Add inventory files or inline content
+	if len(p.Config.Inventories) > 0 {
+		for _, inventory := range p.Config.Inventories {
+			args = append(args, "--inventory", inventory)
+		}
+	}
+
+	if p.Config.InventoryContent != "" {
+		tmpfile, err := os.CreateTemp("", "inventory")
+		if err != nil {
+			return fmt.Errorf("failed to create temporary inventory file: %w", err)
+		}
+		defer os.Remove(tmpfile.Name())
+		if _, err := tmpfile.WriteString(p.Config.InventoryContent); err != nil {
+			return fmt.Errorf("failed to write inventory content to temporary file: %w", err)
+		}
+		args = append(args, "--inventory", tmpfile.Name())
+	}
+
+	// Step 6: Handle privilege escalation
+	if p.Config.Become {
+		args = append(args, "--become")
+	}
+	if p.Config.BecomeUser != "" {
+		args = append(args, "--become-user", p.Config.BecomeUser)
+	}
+
+	// Step 7: Handle dynamic inventory
+	if p.Config.DynamicInventory {
+		args = append(args, "--dynamic-inventory")
+	}
+
+	// Step 8: Add extra variables
+	for _, ev := range p.Config.ExtraVars {
+		args = append(args, "--extra-vars", ev)
+	}
+
+	// Step 9: Add additional options
+	if p.Config.Extras != "" {
+		args = append(args, p.Config.Extras)
+	}
+
+	// Step 10: Handle forks for parallelism
+	if p.Config.Forks > 0 {
+		args = append(args, "--forks", strconv.Itoa(p.Config.Forks))
+	}
+
+	// Step 11: Handle host key checking
+	env := os.Environ()
+	if !p.Config.HostKeyChecking {
+		env = append(env, "ANSIBLE_HOST_KEY_CHECKING=False")
+	} else {
+		env = append(env, "ANSIBLE_HOST_KEY_CHECKING=True")
+	}
+
+	// Step 12: Handle vault credentials key
+	if p.Config.VaultCredentialsKey != "" {
+		tmpVaultFile, err := os.CreateTemp("", "vault-pass")
+		if err != nil {
+			return fmt.Errorf("failed to create temporary vault password file: %w", err)
+		}
+		defer os.Remove(tmpVaultFile.Name())
+		if _, err := tmpVaultFile.WriteString(p.Config.VaultCredentialsKey); err != nil {
+			return fmt.Errorf("failed to write vault password to temporary file: %w", err)
+		}
+		args = append(args, "--vault-password-file", tmpVaultFile.Name())
+	}
+
+	// Step 13: Handle vault temporary path
+	if p.Config.VaultTmpPath != "" {
+		args = append(args, "--vault-password-file", p.Config.VaultTmpPath)
+	}
+
+	// Step 14: Handle private key file
+	if p.Config.PrivateKeyFile != "" {
+		args = append(args, "--private-key", p.Config.PrivateKeyFile)
+	}
+
+	// Step 15: Use custom Ansible installation if provided
+	executable := "ansible"
+	if p.Config.Installation != "" {
+		executable = p.Config.Installation
+	}
+
+	// Step 16: Construct and execute the command
+	cmd := exec.Command(executable, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = env // Pass environment variables
+
+	// Log the command for debugging purposes
+	fmt.Printf("Executing command: %s %v\n", executable, args)
+
+	// Step 17: Run the command
+	return cmd.Run()
+}
+
+// executeVault executes the Ansible Vault operation
+func (p *Plugin) executeVault() error {
+	// Step 1: Validate the action
+	if err := validateAction(p.Config.Action); err != nil {
+		return err
+	}
+
+	// Step 2: Determine the ansible-vault executable path
+	vaultExecutable := "ansible-vault"
+	if p.Config.Installation != "" {
+		vaultExecutable = p.Config.Installation
+	}
+
+	// Step 3: Build arguments for the ansible-vault command
+	args := []string{p.Config.Action}
+
+	// Step 4: Handle input or content based on the action
+	if p.Config.Action == ActionEncryptString {
+		if p.Config.Content == "" {
+			return errors.New("content is required for encrypt_string action")
+		}
+		args = append(args, "--output", p.Config.Output)
+	} else {
+		if p.Config.Input == "" {
+			return fmt.Errorf("input file is required for %s action", p.Config.Action)
+		}
+		args = append(args, p.Config.Input)
+	}
+
+	// Step 5: Add output file (if applicable)
+	handleOutputFile(p.Config.Output, &args)
+
+	// Step 6: Handle vault password key
+	vaultPasswordFile, err := handleVaultPassword(p.Config.VaultCredentialsKey, p.Config.VaultTmpPath, &args)
+	if err != nil {
+		return err
+	}
+	defer os.Remove(vaultPasswordFile) // Clean up the temporary password file after execution
+
+	// Step 7: Handle new vault password key for rekeying
+	if p.Config.Action == ActionRekey && p.Config.NewVaultCredentialsKey != "" {
+		newVaultPasswordFile, err := handleNewVaultPassword(p.Config.NewVaultCredentialsKey, p.Config.VaultTmpPath, &args)
+		if err != nil {
+			return err
+		}
+		defer os.Remove(newVaultPasswordFile) // Cleanup after execution
+	}
+
+	// Step 8: Construct the command
+	cmd := exec.Command(vaultExecutable, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	// Step 9: Pass the string content via stdin if encrypt_string
+	if p.Config.Action == ActionEncryptString {
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			return fmt.Errorf("failed to open stdin pipe: %w", err)
+		}
+		go func() {
+			defer stdin.Close()
+			if _, writeErr := stdin.Write([]byte(p.Config.Content)); writeErr != nil {
+				fmt.Fprintf(os.Stderr, "failed to write to stdin: %v\n", writeErr)
+			}
+		}()
+	}
+
+	// Step 10: Log the command for debugging purposes
+	fmt.Printf("Executing command: %s %v\n", vaultExecutable, args)
+
+	// Step 11: Execute the command
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("ansible-vault command failed: %w", err)
+	}
+
+	return nil
+}
+
+// validateAction validates the provided action
+func validateAction(action string) error {
+	validActions := map[string]bool{
+		ActionEncrypt:       true,
+		ActionDecrypt:       true,
+		ActionEncryptString: true,
+		ActionView:          true,
+		ActionEdit:          true,
+		ActionRekey:         true,
+	}
+	if !validActions[action] {
+		return fmt.Errorf("invalid action: %s. Supported actions: encrypt, decrypt, encrypt_string, view, edit, rekey", action)
+	}
+	return nil
+}
+
+// handleOutputFile adds the output file flag if provided
+func handleOutputFile(output string, args *[]string) {
+	if output != "" {
+		*args = append(*args, "--output", output)
+	}
+}
+
+// handleVaultPassword writes the vault password to a temporary file and appends it to args
+func handleVaultPassword(vaultKey string, vaultTmpPath string, args *[]string) (string, error) {
+	if vaultKey == "" {
+		return "", errors.New("vaultCredentialsKey is required for vault operations")
+	}
+
+	// Create a temporary Vault password file
+	tmpVaultFile, err := createVaultTmpFile(vaultTmpPath, "vault-pass")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temporary vault password file: %w", err)
+	}
+
+	// Write the password to the file
+	if _, err := tmpVaultFile.WriteString(vaultKey); err != nil {
+		tmpVaultFile.Close()
+		return "", fmt.Errorf("failed to write vault key to temporary file: %w", err)
+	}
+
+	// Close the file to ensure the data is flushed
+	if err := tmpVaultFile.Close(); err != nil {
+		return "", fmt.Errorf("failed to close vault password file: %w", err)
+	}
+
+	// Set correct permissions
+	if err := os.Chmod(tmpVaultFile.Name(), 0600); err != nil {
+		return "", fmt.Errorf("failed to set permissions on vault password file: %w", err)
+	}
+
+	// Append the file path to the args
+	*args = append(*args, "--vault-password-file", tmpVaultFile.Name())
+	return tmpVaultFile.Name(), nil
+}
+
+func handleNewVaultPassword(newVaultKey string, vaultTmpPath string, args *[]string) (string, error) {
+	// Create a temporary file for the new vault password
+	tmpNewVaultFile, err := createVaultTmpFile(vaultTmpPath, "new-vault-pass")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temporary new vault password file: %w", err)
+	}
+
+	// Write the new password to the file
+	if _, err := tmpNewVaultFile.WriteString(newVaultKey); err != nil {
+		tmpNewVaultFile.Close()
+		return "", fmt.Errorf("failed to write new vault key to temporary file: %w", err)
+	}
+
+	// Close the file to ensure the data is flushed
+	if err := tmpNewVaultFile.Close(); err != nil {
+		return "", fmt.Errorf("failed to close new vault password file: %w", err)
+	}
+
+	// Append the new vault password file to the args
+	*args = append(*args, "--new-vault-password-file", tmpNewVaultFile.Name())
+	return tmpNewVaultFile.Name(), nil
+}
+
+// createVaultTmpFile creates a temporary file in the specified VaultTmpPath or system default
+func createVaultTmpFile(vaultTmpPath, prefix string) (*os.File, error) {
+	if vaultTmpPath != "" {
+		if err := ensureDirectoryExists(vaultTmpPath); err != nil {
+			return nil, err
+		}
+		return os.CreateTemp(vaultTmpPath, prefix)
+	}
+	return os.CreateTemp("", prefix)
+}
+
+// ensureDirectoryExists ensures the directory exists or creates it
+func ensureDirectoryExists(dir string) error {
+	info, err := os.Stat(dir)
+	if os.IsNotExist(err) {
+		return os.MkdirAll(dir, 0755)
+	}
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%s exists but is not a directory", dir)
+	}
+	return nil
+}
+
 func (p *Plugin) ansibleConfig() error {
 	if err := os.MkdirAll(ansibleFolder, os.ModePerm); err != nil {
 		return errors.Wrap(err, "failed to create ansible directory")
 	}
 
-	if err := os.WriteFile(ansibleConfig, []byte(ansibleContent), 0600); err != nil {
+	ansibleConfigContent := "[defaults]\n"
+	if p.Config.DisableHostKeyChecking {
+		ansibleConfigContent += "host_key_checking = False\n"
+	}
+
+	if err := os.WriteFile(ansibleConfig, []byte(ansibleConfigContent), 0600); err != nil {
 		return errors.Wrap(err, "failed to create ansible config")
 	}
 
@@ -169,6 +540,32 @@ func (p *Plugin) vaultPass() error {
 	}
 
 	p.Config.VaultPasswordFile = tmpfile.Name()
+	return nil
+}
+
+// setupInventory handles inline inventory content
+func (p *Plugin) setupInventory() error {
+	if p.Config.InventoryContent != "" {
+		tmpfile, err := os.CreateTemp("", "inventory")
+		if err != nil {
+			return errors.Wrap(err, "failed to create temporary inventory file")
+		}
+		if _, err := tmpfile.WriteString(p.Config.InventoryContent); err != nil {
+			return errors.Wrap(err, "failed to write inventory content")
+		}
+		defer tmpfile.Close()
+		p.Config.Inventories = append(p.Config.Inventories, tmpfile.Name())
+	}
+	return nil
+}
+
+// validateInstallation checks if the specified Ansible installation exists
+func (p *Plugin) validateInstallation() error {
+	if p.Config.Installation != "" {
+		if _, err := exec.LookPath(p.Config.Installation); err != nil {
+			return errors.Wrapf(err, "specified Ansible installation not found: %s", p.Config.Installation)
+		}
+	}
 	return nil
 }
 
@@ -261,6 +658,10 @@ func (p *Plugin) ansibleCommand(inventory string) *exec.Cmd {
 
 	if p.Config.VaultPasswordFile != "" {
 		args = append(args, "--vault-password-file", p.Config.VaultPasswordFile)
+	}
+
+	if p.Config.VaultTmpPath != "" {
+		args = append(args, "--vault-password-file", p.Config.VaultTmpPath) // Vault temporary path
 	}
 
 	for _, v := range p.Config.ExtraVars {
@@ -381,10 +782,20 @@ func (p *Plugin) ansibleCommand(inventory string) *exec.Cmd {
 
 	args = append(args, p.Config.Playbooks...)
 
-	return exec.Command(
-		"ansible-playbook",
-		args...,
-	)
+	return exec.Command(p.ansibleExecutable(), args...)
+
+	// return exec.Command(
+	// 	"ansible-playbook",
+	// 	args...,
+	// )
+}
+
+// ansibleExecutable determines the executable to use
+func (p *Plugin) ansibleExecutable() string {
+	if p.Config.Installation != "" {
+		return p.Config.Installation
+	}
+	return "ansible-playbook"
 }
 
 func trace(cmd *exec.Cmd) {
