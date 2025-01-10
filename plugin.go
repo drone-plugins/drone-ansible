@@ -366,7 +366,9 @@ func (p *Plugin) executeVault() error {
 		}
 		go func() {
 			defer stdin.Close()
-			stdin.Write([]byte(p.Config.Content))
+			if _, writeErr := stdin.Write([]byte(p.Config.Content)); writeErr != nil {
+				fmt.Fprintf(os.Stderr, "failed to write to stdin: %v\n", writeErr)
+			}
 		}()
 	}
 
