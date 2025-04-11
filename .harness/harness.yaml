@@ -230,8 +230,8 @@ pipeline:
   properties:
     ci:
       codebase:
-        connectorRef: GitHub_Drone_Runners_Org
-        repoName: drone-runner-kube
+        connectorRef: GitHub_Drone_Plugins_Org
+        repoName: drone-ansible
         build: <+input>
         sparseCheckout: []
   projectIdentifier: Drone_Plugins
