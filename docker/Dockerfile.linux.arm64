@@ -1,3 +1,6 @@
+FROM harness0.harness.io/oci/docker_artifacts/hhi/harnessos-alpine:1 AS hhi-ca-certificates
+RUN apk add --no-cache 'ca-certificates>=20261020-r0'
+
 FROM plugins/base:linux-arm64
 
 LABEL maintainer="Drone.IO Community <drone-dev@googlegroups.com>" \
@@ -12,3 +15,6 @@ RUN apk add --no-cache bash git curl rsync openssh-client sshpass py3-pip py3-re
 
 ADD release/linux/arm64/drone-ansible /bin/
 ENTRYPOINT ["/bin/drone-ansible"]
+
+# Supply the incident-patched system roots from the HHI package.
+COPY --from=hhi-ca-certificates /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
