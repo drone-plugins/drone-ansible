@@ -1,6 +1,8 @@
 module github.com/drone-plugins/drone-ansible
 
-go 1.26.10
+go 1.23
+
+toolchain go1.26.10
 
 require (
 	github.com/pkg/errors v0.9.1

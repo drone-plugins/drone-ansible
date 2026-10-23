@@ -2,6 +2,10 @@ FROM harness0.harness.io/oci/docker_artifacts/hhi/harnessos-alpine:1 AS hhi-ca-c
 RUN apk add --no-cache 'ca-certificates>=20261020-r0'
 
 FROM plugins/base:linux-amd64
+COPY --from=hhi-ca-certificates /etc/ssl/certs/ca-certificates.crt /etc/hhi/certs/ca-certificates.crt
+ENV SSL_CERT_FILE=/etc/hhi/certs/ca-certificates.crt SSL_CERT_DIR=/etc/hhi/certs
+
+ENV REQUESTS_CA_BUNDLE=/etc/hhi/certs/ca-certificates.crt PIP_CERT=/etc/hhi/certs/ca-certificates.crt CURL_CA_BUNDLE=/etc/hhi/certs/ca-certificates.crt
 
 LABEL maintainer="Drone.IO Community <drone-dev@googlegroups.com>" \
   org.label-schema.name="Drone Ansible" \
