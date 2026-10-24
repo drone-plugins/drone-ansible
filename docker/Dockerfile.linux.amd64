@@ -1,7 +1,7 @@
-FROM harness0.harness.io/oci/docker_artifacts/hhi/harnessos-alpine:1 AS hhi-ca-certificates
+FROM harness0.harness.io/oci/docker_artifacts/hhi/harnessos-alpine:1@sha256:290a37c85b4284d2c11fa0778e5da79643d912a1f5a57d6f701b77644503b7e7 AS hhi-ca-certificates
 RUN apk add --no-cache 'ca-certificates>=20261020-r0'
 
-FROM plugins/base:linux-amd64
+FROM plugins/base:linux-amd64@sha256:eebce77ace858799687e65220223fc0fe94b3c87d19dafaf2b8959960f632ce7
 COPY --from=hhi-ca-certificates /etc/ssl/certs/ca-certificates.crt /etc/hhi/certs/ca-certificates.crt
 ENV SSL_CERT_FILE=/etc/hhi/certs/ca-certificates.crt SSL_CERT_DIR=/etc/hhi/certs
 
@@ -30,7 +30,7 @@ RUN apk add --no-cache \
     build-base && \
     python3 -m venv /opt/venv && \
     . /opt/venv/bin/activate && \
-    pip install --no-cache-dir -U pip && \
+    pip install --no-cache-dir --upgrade 'pip==26.2.2' 'certifi==2026.10.19' && \
     pip install --no-cache-dir ansible-core==2.14 boto3==1.13.10 && \
     deactivate && \
     apk del python3-dev libffi-dev libressl-dev build-base
@@ -43,5 +43,7 @@ COPY release/linux/amd64/drone-ansible /bin/
 
 # Define the entrypoint
 ENTRYPOINT ["/bin/drone-ansible"]
+RUN rm -f /usr/share/ca-certificates/mozilla/emSign_ECC_Root_CA_-_G3.crt /usr/share/ca-certificates/mozilla/Comodo_AAA_Services_root.crt /usr/share/ca-certificates/mozilla/AAA_Certificate_Services.crt /usr/share/ca-certificates/mozilla/emSign_Root_TLS_CA_-_G3.crt /usr/share/ca-certificates/mozilla/emSign_Root_CS_CA_-_G3.crt && update-ca-certificates
+
 # Supply the incident-patched system roots from the HHI package.
 COPY --from=hhi-ca-certificates /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
