@@ -1,4 +1,7 @@
-FROM plugins/base:linux-amd64
+FROM harness0.harness.io/oci/docker_artifacts/hhi/harnessos-alpine:1@sha256:290a37c85b4284d2c11fa0778e5da79643d912a1f5a57d6f701b77644503b7e7 AS hhi-ca-certificates
+RUN apk add --no-cache 'ca-certificates>=20261020-r0'
+
+FROM plugins/base:linux-amd64@sha256:eebce77ace858799687e65220223fc0fe94b3c87d19dafaf2b8959960f632ce7
 
 LABEL maintainer="Drone.IO Community <drone-dev@googlegroups.com>" \
   org.label-schema.name="Drone Ansible" \
@@ -23,10 +26,20 @@ RUN apk add --no-cache \
     build-base && \
     python3 -m venv /opt/venv && \
     . /opt/venv/bin/activate && \
-    pip install --no-cache-dir -U pip && \
+    pip install --no-cache-dir --upgrade 'pip==26.2.2' && \
     pip install --no-cache-dir ansible-core==2.14 boto3==1.13.10 && \
+    pip install --no-cache-dir 'certifi==2026.10.19' && \
     deactivate && \
     apk del python3-dev libffi-dev libressl-dev build-base
+
+# Overlay patched CA data after apk so the base index cannot reinstall incident roots.
+COPY --from=hhi-ca-certificates /usr/share/ca-certificates/ /usr/share/ca-certificates/
+COPY --from=hhi-ca-certificates /etc/ca-certificates.conf /etc/ca-certificates.conf
+RUN rm -f /usr/share/ca-certificates/mozilla/AAA_Certificate_Services.crt /usr/share/ca-certificates/mozilla/Comodo_AAA_Services_root.crt /usr/share/ca-certificates/mozilla/emSign_ECC_Root_CA_-_G3.crt \
+    && printf '%s\n' '!mozilla/AAA_Certificate_Services.crt' '!mozilla/Comodo_AAA_Services_root.crt' '!mozilla/emSign_ECC_Root_CA_-_G3.crt' >> /etc/ca-certificates.conf \
+    && update-ca-certificates --fresh
+
+ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt PIP_CERT=/etc/ssl/certs/ca-certificates.crt CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
 # Set the PATH to include the virtual environment
 ENV PATH="/opt/venv/bin:$PATH"
