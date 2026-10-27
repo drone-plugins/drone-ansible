@@ -36,7 +36,7 @@ pipeline:
                   spec:
                     connectorRef: HHI_Public_Images
                     image: harness0.harness.io/oci/docker_artifacts/hhi/go:1.26.10@sha256:718fddf012b3a305e936ae9964e5a642036bcb7b4c6c0786e2f78f238d637db8
-                    shell: Bash
+                    shell: Sh
                     command: go test -cover ./...
           caching:
             enabled: false
