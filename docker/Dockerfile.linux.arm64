@@ -2,13 +2,6 @@ FROM harness0.harness.io/oci/docker_artifacts/hhi/harnessos-alpine:1@sha256:290a
 RUN apk add --no-cache 'ca-certificates>=20261020-r0'
 
 FROM plugins/base:linux-arm64@sha256:bffad6a428836cfc9882d80dda8b9826c6a55c26ce488ab5f0260804db102ab9
-COPY --from=hhi-ca-certificates /usr/share/ca-certificates/ /usr/share/ca-certificates/
-COPY --from=hhi-ca-certificates /etc/ca-certificates.conf /etc/ca-certificates.conf
-RUN rm -f /usr/share/ca-certificates/mozilla/AAA_Certificate_Services.crt /usr/share/ca-certificates/mozilla/Comodo_AAA_Services_root.crt /usr/share/ca-certificates/mozilla/emSign_ECC_Root_CA_-_G3.crt \
-    && printf '%s\n' '!mozilla/AAA_Certificate_Services.crt' '!mozilla/Comodo_AAA_Services_root.crt' '!mozilla/emSign_ECC_Root_CA_-_G3.crt' >> /etc/ca-certificates.conf \
-    && update-ca-certificates --fresh
-
-ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt PIP_CERT=/etc/ssl/certs/ca-certificates.crt CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
 LABEL maintainer="Drone.IO Community <drone-dev@googlegroups.com>" \
   org.label-schema.name="Drone Ansible" \
@@ -16,9 +9,19 @@ LABEL maintainer="Drone.IO Community <drone-dev@googlegroups.com>" \
   org.label-schema.schema-version="1.0"
 
 RUN apk add --no-cache bash git curl rsync openssh-client sshpass py3-pip py3-requests py3-paramiko python3-dev libffi-dev libressl-dev libressl build-base && \
-  pip3 install --break-system-packages --no-cache-dir --upgrade 'pip==26.2.2' 'certifi==2026.10.19' && \
-  pip3 install --break-system-packages ansible-core==2.14 boto3==1.13.10 && \
+  pip3 install --break-system-packages --no-cache-dir --upgrade 'pip==26.2.2' && \
+  pip3 install --break-system-packages --no-cache-dir ansible-core==2.14 boto3==1.13.10 && \
+  pip3 install --break-system-packages --no-cache-dir 'certifi==2026.10.19' && \
   apk del --no-cache python3-dev libffi-dev libressl-dev build-base
+
+# Overlay patched CA data after apk so the base index cannot reinstall incident roots.
+COPY --from=hhi-ca-certificates /usr/share/ca-certificates/ /usr/share/ca-certificates/
+COPY --from=hhi-ca-certificates /etc/ca-certificates.conf /etc/ca-certificates.conf
+RUN rm -f /usr/share/ca-certificates/mozilla/AAA_Certificate_Services.crt /usr/share/ca-certificates/mozilla/Comodo_AAA_Services_root.crt /usr/share/ca-certificates/mozilla/emSign_ECC_Root_CA_-_G3.crt \
+    && printf '%s\n' '!mozilla/AAA_Certificate_Services.crt' '!mozilla/Comodo_AAA_Services_root.crt' '!mozilla/emSign_ECC_Root_CA_-_G3.crt' >> /etc/ca-certificates.conf \
+    && update-ca-certificates --fresh
+
+ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt PIP_CERT=/etc/ssl/certs/ca-certificates.crt CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
 ADD release/linux/arm64/drone-ansible /bin/
 ENTRYPOINT ["/bin/drone-ansible"]

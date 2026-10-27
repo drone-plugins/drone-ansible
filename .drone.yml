@@ -62,8 +62,6 @@ steps:
   - name: docker
     image: plugins/docker
     settings:
-      pull_image: true
-      no_cache: true
       dockerfile: docker/Dockerfile.linux.amd64
       repo: plugins/ansible
       username:
@@ -108,8 +106,6 @@ steps:
   - name: docker
     image: plugins/docker
     settings:
-      pull_image: true
-      no_cache: true
       dockerfile: docker/Dockerfile.linux.arm64
       repo: plugins/ansible
       username:
